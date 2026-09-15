@@ -73,7 +73,7 @@ def build_plan(request: PlanRequest) -> PlanResponse:
     destination = get_destination(request.destination)
     if destination is None:
         raise ValueError(
-            "This prototype currently supports Kyoto and Shillong. More destinations are on the roadmap."
+            "This prototype currently supports Shillong. More destinations are on the roadmap."
         )
     activities = destination["activities"]
     anchors = destination["anchors"]

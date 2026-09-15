@@ -8,9 +8,9 @@ from app.planner import build_plan
 
 def request(**overrides):
     values = {
-        "origin_city": "Mumbai", "destination": "Kyoto", "start_date": date(2026, 4, 6), "end_date": date(2026, 4, 8),
-        "travelers": 2, "budget": 900, "pace": "balanced",
-        "traveller_type": "couple", "interests": ["culture", "food"], "dietary_restrictions": [],
+        "origin_city": "Guwahati", "destination": "Shillong", "start_date": date(2026, 11, 10),
+        "end_date": date(2026, 11, 12), "travelers": 2, "budget": 12000, "currency": "INR", "pace": "balanced",
+        "traveller_type": "couple", "interests": ["outdoors", "food"], "dietary_restrictions": [],
         "enhance_with_ai": False,
     }
     values.update(overrides)
@@ -34,22 +34,20 @@ def test_interest_and_dietary_constraints_are_explainable():
 
 
 def test_invalid_destination_is_rejected():
-    with pytest.raises(ValueError, match="supports Kyoto"):
-        build_plan(request(destination="Osaka"))
+    with pytest.raises(ValueError, match="supports Shillong"):
+        build_plan(request(destination="Goa"))
 
 
 def test_date_range_is_validated():
     with pytest.raises(ValueError):
-        request(end_date=date(2026, 4, 1))
+        request(end_date=date(2026, 11, 1))
 
 
-def test_shillong_plan_is_generated_from_its_own_data():
-    plan = build_plan(request(
-        destination="Shillong", currency="INR", budget=15000, lodging_area="Police Bazar",
-        interests=["outdoors", "nature"], start_date=date(2026, 11, 10), end_date=date(2026, 11, 12),
-    ))
+def test_shillong_plan_uses_its_own_curated_data():
+    plan = build_plan(request(interests=["outdoors", "nature"]))
     assert plan.destination == "Shillong"
     assert plan.destination_country == "India"
+    assert plan.currency == "INR"
     ids = [item.activity.id for day in plan.days for item in day.activities]
     assert all(activity_id.startswith((
         "umiam", "ward", "elephant", "living-root", "mawsmai", "nohkalikai", "laitlum",

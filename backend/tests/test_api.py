@@ -5,18 +5,18 @@ from app.main import app
 client = TestClient(app)
 
 
-def test_health_lists_both_destinations():
+def test_health_lists_shillong():
     response = client.get("/api/health")
     assert response.status_code == 200
     body = response.json()
-    assert set(body["destinations"]) == {"kyoto", "shillong"}
+    assert body["destinations"] == ["shillong"]
 
 
 def test_destinations_endpoint_shape():
     response = client.get("/api/destinations")
     assert response.status_code == 200
     names = {entry["name"] for entry in response.json()["destinations"]}
-    assert names == {"Kyoto", "Shillong"}
+    assert names == {"Shillong"}
 
 
 def test_plan_endpoint_returns_itinerary_for_shillong():

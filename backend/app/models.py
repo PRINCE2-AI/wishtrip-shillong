@@ -13,15 +13,15 @@ class PlanRequest(BaseModel):
     start_date: date
     end_date: date
     travelers: int = Field(default=2, ge=1, le=12)
-    budget: float = Field(default=1200, gt=0, le=1000000)
-    currency: Literal["USD", "JPY", "INR"] = "USD"
+    budget: float = Field(default=12000, gt=0, le=1000000)
+    currency: Literal["INR"] = "INR"
     pace: Pace = "balanced"
     traveller_type: Literal["solo", "couple", "family", "friends", "seniors"] = "couple"
     interests: list[str] = Field(default_factory=list, max_length=8)
     dietary_restrictions: list[str] = Field(default_factory=list, max_length=6)
     accessibility: bool = False
     enhance_with_ai: bool = True
-    lodging_area: str = "Gion"
+    lodging_area: str = "Police Bazar"
 
     @field_validator("end_date")
     @classmethod

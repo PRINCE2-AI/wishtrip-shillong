@@ -1,6 +1,6 @@
 import { StrictMode, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowRight, CalendarDays, Check, ChevronDown, Compass, MapPin, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, Compass, MapPin, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
 import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -31,11 +31,10 @@ type Plan = {
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 const INTERESTS = ['Culture', 'Food', 'Outdoors', 'Wellness', 'History', 'Craft', 'Photography', 'Adventure']
 
-const DESTINATIONS = {
-  kyoto: { id: 'kyoto', label: 'Kyoto, Japan', currency: 'USD', lodgingArea: 'Gion', center: [35.0116, 135.7681] as [number, number], tagline: 'Kyoto, thoughtfully planned.' },
-  shillong: { id: 'shillong', label: 'Shillong, India', currency: 'INR', lodgingArea: 'Police Bazar', center: [25.5788, 91.8933] as [number, number], tagline: 'Shillong, at your own pace.' },
+const DESTINATION = {
+  name: 'Shillong', label: 'Shillong, India', currency: 'INR', lodgingArea: 'Police Bazar',
+  center: [25.5788, 91.8933] as [number, number], tagline: 'Shillong, at your own pace.',
 }
-type DestinationKey = keyof typeof DESTINATIONS
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${value}T12:00:00`))
@@ -44,10 +43,10 @@ function money(value: number, currency: string) {
   return new Intl.NumberFormat(currency === 'INR' ? 'en-IN' : 'en-US', { style: 'currency', currency, maximumFractionDigits: 0 }).format(value)
 }
 
-function DayMap({ day, center }: { day: Day; center: [number, number] }) {
+function DayMap({ day }: { day: Day }) {
   const points = day.activities.map((item) => [item.activity.latitude, item.activity.longitude] as [number, number])
   return (
-    <MapContainer center={points[0] ?? center} zoom={12} scrollWheelZoom={false} className="day-map">
+    <MapContainer center={points[0] ?? DESTINATION.center} zoom={12} scrollWheelZoom={false} className="day-map">
       <TileLayer attribution='&copy; OpenStreetMap contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
       {points.length > 1 && <Polyline positions={points} pathOptions={{ color: '#bd5a42', weight: 3, dashArray: '2 8' }} />}
       {day.activities.map((item) => (
@@ -60,16 +59,14 @@ function DayMap({ day, center }: { day: Day; center: [number, number] }) {
 }
 
 function App() {
-  const [destination, setDestination] = useState<DestinationKey>('kyoto')
-  const [showDestinationMenu, setShowDestinationMenu] = useState(false)
-  const [startDate, setStartDate] = useState('2026-04-06')
-  const [endDate, setEndDate] = useState('2026-04-10')
-  const [originCity, setOriginCity] = useState('Mumbai')
+  const [startDate, setStartDate] = useState('2026-11-10')
+  const [endDate, setEndDate] = useState('2026-11-14')
+  const [originCity, setOriginCity] = useState('Guwahati')
   const [travelers, setTravelers] = useState(2)
   const [travellerType, setTravellerType] = useState('couple')
-  const [budget, setBudget] = useState(1500)
+  const [budget, setBudget] = useState(12000)
   const [pace, setPace] = useState<Pace>('balanced')
-  const [interests, setInterests] = useState<string[]>(['Culture', 'Food'])
+  const [interests, setInterests] = useState<string[]>(['Outdoors', 'Culture'])
   const [dietary, setDietary] = useState<string[]>([])
   const [accessibility, setAccessibility] = useState(false)
   const [plan, setPlan] = useState<Plan | null>(null)
@@ -78,17 +75,8 @@ function App() {
   const [activeDay, setActiveDay] = useState(0)
   const [swaps, setSwaps] = useState<Record<string, Activity>>({})
 
-  const dest = DESTINATIONS[destination]
   const nights = useMemo(() => Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000)), [startDate, endDate])
   const toggleInterest = (interest: string) => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])
-
-  const selectDestination = (key: DestinationKey) => {
-    setDestination(key)
-    setBudget(key === 'shillong' ? 12000 : 1500)
-    setShowDestinationMenu(false)
-    setPlan(null)
-    setSwaps({})
-  }
 
   const generate = async () => {
     setLoading(true); setError(''); setSwaps({})
@@ -96,8 +84,8 @@ function App() {
       const response = await fetch(`${API_URL}/api/plan`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          origin_city: originCity, destination: dest.label.split(',')[0], start_date: startDate, end_date: endDate,
-          travelers, traveller_type: travellerType, budget, currency: dest.currency, lodging_area: dest.lodgingArea,
+          origin_city: originCity, destination: DESTINATION.name, start_date: startDate, end_date: endDate,
+          travelers, traveller_type: travellerType, budget, currency: DESTINATION.currency, lodging_area: DESTINATION.lodgingArea,
           pace, interests, dietary_restrictions: dietary, accessibility, enhance_with_ai: true,
         }),
       })
@@ -124,8 +112,8 @@ function App() {
       <main>
         <section className="hero" id="planner">
           <div className="hero-copy">
-            <p className="eyebrow">A slower way to see the world</p>
-            <h1 dangerouslySetInnerHTML={{ __html: dest.tagline.replace(/,\s*(\S+)/, ', <em>$1</em>') }} />
+            <p className="eyebrow">A slower way to see the Northeast</p>
+            <h1>Shillong, <em>at your own pace.</em></h1>
             <p className="hero-lede">Tell us what you love. We’ll shape a trip around it — with breathing room for the moments you can’t schedule.</p>
           </div>
           <div className="hero-stamp"><Sparkles size={15} /><span>CURATED FOR<br /><strong>YOUR RHYTHM</strong></span></div>
@@ -134,23 +122,14 @@ function App() {
         <section className="planner-card" aria-label="Trip preferences">
           <div className="card-heading">
             <div><span className="step">01</span><div><h2>Set your scene</h2><p>The essentials, then the little details.</p></div></div>
-            <div className="destination-select">
-              <button className="destination-pill" onClick={() => setShowDestinationMenu((open) => !open)}><MapPin size={14} /> {dest.label} <ChevronDown size={15} /></button>
-              {showDestinationMenu && (
-                <div className="destination-menu">
-                  {(Object.keys(DESTINATIONS) as DestinationKey[]).map((key) => (
-                    <button key={key} className={key === destination ? 'selected' : ''} onClick={() => selectDestination(key)}>{DESTINATIONS[key].label}</button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <span className="destination-pill"><MapPin size={14} /> {DESTINATION.label}</span>
           </div>
           <div className="form-grid">
             <label><span>FROM</span><div className="input-wrap"><MapPin size={16} /><input value={originCity} onChange={(event) => setOriginCity(event.target.value)} /></div></label>
             <label><span>CHECK IN</span><div className="input-wrap"><CalendarDays size={16} /><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></div></label>
             <label><span>CHECK OUT</span><div className="input-wrap"><CalendarDays size={16} /><input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} /></div></label>
             <label><span>TRAVELERS</span><div className="input-wrap"><input type="number" min="1" max="12" value={travelers} onChange={(event) => setTravelers(Number(event.target.value))} /><small>people</small></div></label>
-            <label><span>YOUR BUDGET</span><div className="input-wrap"><WalletCards size={16} /><input type="number" min="100" value={budget} onChange={(event) => setBudget(Number(event.target.value))} /><small>{dest.currency} total</small></div></label>
+            <label><span>YOUR BUDGET</span><div className="input-wrap"><WalletCards size={16} /><input type="number" min="100" value={budget} onChange={(event) => setBudget(Number(event.target.value))} /><small>{DESTINATION.currency} total</small></div></label>
           </div>
           <div className="preferences-row">
             <div className="pace-control"><span className="label">TRIP STYLE</span><div className="segmented">{['solo', 'couple', 'family', 'friends', 'seniors'].map((value) => <button key={value} className={travellerType === value ? 'selected' : ''} onClick={() => setTravellerType(value)}>{value}</button>)}</div><span className="label">YOUR PACE</span><div className="segmented">{(['relaxed', 'balanced', 'packed'] as Pace[]).map((value) => <button key={value} className={pace === value ? 'selected' : ''} onClick={() => setPace(value)}>{value === 'relaxed' ? 'Slow & spacious' : value === 'balanced' ? 'A little of everything' : 'Make it count'}</button>)}</div></div>
@@ -162,14 +141,14 @@ function App() {
         </section>
 
         <section className="itinerary-section" id="itinerary">
-          {!plan ? <div className="empty-state"><Compass size={28} /><h2>Your {dest.label.split(',')[0]} story starts here.</h2><p>Set your preferences above and we’ll arrange a clear, considered itinerary in seconds.</p></div> : <>
+          {!plan ? <div className="empty-state"><Compass size={28} /><h2>Your Shillong story starts here.</h2><p>Set your preferences above and we’ll arrange a clear, considered itinerary in seconds.</p></div> : <>
             <div className="itinerary-header"><div><p className="eyebrow">YOUR PERSONAL ITINERARY</p><h2>{nights} nights in {plan.destination} <span>·</span> {travelers} {travelers === 1 ? 'traveler' : 'travelers'}</h2></div><div className="total-card"><span>EST. TRIP COST</span><strong>{money(plan.estimated_total, plan.currency)}</strong><small>of {money(budget, plan.currency)} budget</small></div></div>
             {plan.seasonal_note && <p className="seasonal-note"><Sparkles size={13} /> {plan.seasonal_note}</p>}
             <div className="itinerary-layout">
               <div className="day-list">
                 {plan.days.map((day, index) => <article className="day-card" key={day.day}>
                   <div className="day-meta"><span className="day-number">DAY {String(day.day).padStart(2, '0')}</span><span>{formatDate(day.date)}</span><span className="theme">{day.theme}</span></div>
-                  <div className="day-title-row"><h3>{day.day === 1 ? 'A gentle introduction' : day.day === 2 ? 'Temples & tiny discoveries' : 'Follow your curiosity'}</h3><span>{day.total_hours}h · {day.walking_km} km walking</span></div>
+                  <div className="day-title-row"><h3>{day.day === 1 ? 'A gentle introduction' : day.day === 2 ? 'Waterfalls & tiny discoveries' : 'Follow your curiosity'}</h3><span>{day.total_hours}h · {day.walking_km} km walking</span></div>
                   {day.activities.map((item) => {
                     const activity = displayedActivity(item)
                     return (
@@ -197,7 +176,7 @@ function App() {
                   <button className={activeDay === index ? 'day-map-toggle open' : 'day-map-toggle'} onClick={() => setActiveDay(activeDay === index ? -1 : index)}>
                     <MapPin size={13} /> {activeDay === index ? 'Hide route map' : 'View route on map'}
                   </button>
-                  {activeDay === index && <DayMap day={day} center={dest.center} />}
+                  {activeDay === index && <DayMap day={day} />}
                 </article>)}
               </div>
               <aside className="methodology">
@@ -226,7 +205,7 @@ function App() {
           </>}
         </section>
       </main>
-      <footer><span>© 2026 Wishtrip</span><span>Made for more meaningful miles.</span><span>{plan?.destination ?? dest.label.split(',')[0]} seed data · deterministic planning</span></footer>
+      <footer><span>© 2026 Wishtrip</span><span>Made for more meaningful miles.</span><span>Shillong seed data · deterministic planning</span></footer>
     </div>
   )
 }
