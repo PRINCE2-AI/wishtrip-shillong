@@ -23,6 +23,26 @@ def _interest_score(activity: Activity, interests: set[str]) -> float:
     return min(1, len(set(activity.tags) & interests) / max(1, min(2, len(interests))))
 
 
+def _party_fit(activity: Activity, traveller_type: str) -> tuple[float, str | None]:
+    """How well an activity suits the traveller party, beyond raw interest match."""
+    tags = set(activity.tags)
+    if traveller_type == "family":
+        if activity.duration_hours > 4 or "adventure" in tags:
+            return 0.25, None
+        if activity.category in ("Museum", "Workshop") or "nature" in tags:
+            return 1.0, "Great pick for a family day"
+        return 0.75, None
+    if traveller_type == "seniors":
+        if activity.duration_hours > 3 or "adventure" in tags or not activity.accessible:
+            return 0.2, None
+        return 0.9, "Gentle pace, well suited for seniors"
+    if traveller_type in ("solo", "friends"):
+        if "nightlife" in tags or "adventure" in tags:
+            return 1.0, "A favourite for solo/friends trips"
+        return 0.75, None
+    return 0.8, None  # couple, or unrecognised type: neutral, no strong bias
+
+
 def _fits_diet(activity: Activity, restrictions: set[str]) -> bool:
     if not restrictions or activity.category != "Food":
         return True
@@ -41,12 +61,15 @@ def _score(activity: Activity, request: PlanRequest, previous: Activity | None, 
     origin = anchors.get(request.lodging_area, default_anchor) if previous is None else (previous.latitude, previous.longitude)
     proximity = max(0, 1 - distance_km(origin, (activity.latitude, activity.longitude)) / 12)
     pace_fit = 1 if activity.duration_hours <= (2.5 if request.pace == "relaxed" else 3.5) else .65
-    total = .35 * interest + .2 * budget_fit + .2 * proximity + .15 * pace_fit + .1 * activity.popularity
+    party_fit, party_reason = _party_fit(activity, request.traveller_type)
+    total = .35 * interest + .2 * budget_fit + .2 * proximity + .1 * pace_fit + .1 * activity.popularity + .05 * party_fit
     reasons = []
     if interests and set(activity.tags) & interests:
         reasons.append(f"Matches {', '.join(sorted(set(activity.tags) & interests))}")
     elif not interests:
         reasons.append("Strong local staple")
+    if party_reason:
+        reasons.append(party_reason)
     if proximity > .7:
         reasons.append("Near your previous stop")
     if activity.price_per_person == 0:
@@ -149,7 +172,8 @@ def build_plan(request: PlanRequest) -> PlanResponse:
         days=days, unfilled_days=unfilled,
         methodology=[
             "Hard filters: opening weekday, dietary/accessibility needs, no duplicate stops.",
-            "Ranking: 35% interest match, 20% proximity, 20% budget fit, 15% pace, 10% popularity.",
+            "Ranking: 35% interest match, 20% proximity, 20% budget fit, 10% pace, 10% popularity, 5% party fit.",
+            "Party fit downweights long/adventurous stops for family & seniors trips, and favours them for solo/friends trips.",
             "Time blocks prevent overlap; daily activity hours stay under the selected pace limit.",
             f"Travel time uses straight-line {destination['display_name']} coordinates × 12 and is a planning estimate.",
             f"Plan shaped for a {request.traveller_type} trip departing from {request.origin_city}.",

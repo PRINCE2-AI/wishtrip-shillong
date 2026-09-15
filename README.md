@@ -27,12 +27,14 @@ An LLM asked to "plan a trip" will happily invent opening hours, prices, and geo
 ## Planning approach
 
 1. **Hard filters** per candidate day: activity must open on that weekday, satisfy dietary restrictions (for `Food` category activities), and satisfy accessibility if requested. Already-used activities are excluded (no duplicates across the whole trip).
-2. **Scoring** (0–1, weighted): 35% interest-tag match, 20% proximity to the previous stop (or to the chosen lodging area for the day's first stop), 20% budget fit, 15% pace fit (duration vs. selected pace), 10% popularity.
-3. **Slot filling**: each day fills morning → afternoon → evening from the highest-scoring open candidate for that slot, subject to a daily hour cap (7.5h relaxed / 9h balanced & packed) and a soft budget guardrail (once the minimum activities-per-pace target is met, additional stops that would push spend past 108% of budget are skipped).
-4. **Alternatives**: the next 1–2 best-scoring candidates per slot are returned alongside the chosen activity, powering the "Swap for…" button in the UI — a low-risk way to show planning intelligence beyond a single fixed answer, without a second API round-trip.
-5. **Cost breakdown**: spend is summed by activity category (Food, Outdoors, Workshop, …) so a traveller can see where their budget goes, not just a single total.
-6. **Seasonal notes**: a short, month-specific note (e.g. monsoon trail conditions in July, clear post-monsoon trekking weather in November) is attached based on the trip's start month.
-7. **Travel time**: estimated as straight-line distance between coordinates × 12 minutes/km — a deliberate simplification, surfaced in the UI as an estimate rather than presented as routed, road-accurate time. This is a bigger approximation in Shillong's hill terrain than on flat ground, and is called out explicitly rather than presented as fact.
+2. **Scoring** (0–1, weighted): 35% interest-tag match, 20% proximity to the previous stop (or to the chosen lodging area for the day's first stop), 20% budget fit, 10% pace fit (duration vs. selected pace), 10% popularity, 5% party fit.
+3. **Party fit** makes `traveller_type` actually change the plan, not just the copy: long (4h+) or "adventure"-tagged stops are downweighted for `family` and `seniors` trips and upweighted for `solo`/`friends` trips — e.g. the 6-hour Nongriat root bridge trek shows up for a friends trip and is swapped out for a family trip with the same interests and budget (see `test_traveller_type_changes_which_activities_are_chosen` in `backend/tests/test_planner.py`).
+4. **Slot filling**: each day fills morning → afternoon → evening from the highest-scoring open candidate for that slot, subject to a daily hour cap (7.5h relaxed / 9h balanced & packed) and a soft budget guardrail (once the minimum activities-per-pace target is met, additional stops that would push spend past 108% of budget are skipped).
+5. **Alternatives**: the next 1–2 best-scoring candidates per slot are returned alongside the chosen activity, powering the "Swap for…" button in the UI — a low-risk way to show planning intelligence beyond a single fixed answer, without a second API round-trip.
+6. **Cost breakdown**: spend is summed by activity category (Food, Outdoors, Workshop, …) so a traveller can see where their budget goes, not just a single total.
+7. **Seasonal notes**: a short, month-specific note (e.g. monsoon trail conditions in July, clear post-monsoon trekking weather in November) is attached based on the trip's start month.
+8. **Travel time**: estimated as straight-line distance between coordinates × 12 minutes/km — a deliberate simplification, surfaced in the UI as an estimate rather than presented as routed, road-accurate time. This is a bigger approximation in Shillong's hill terrain than on flat ground, and is called out explicitly rather than presented as fact.
+9. **Unfilled days and low-signal edge cases are surfaced, not hidden**: if a day can't be filled, the UI shows which day and a plausible reason (budget/dietary/accessibility) instead of silently rendering a shorter trip.
 
 ## Data model and sources
 

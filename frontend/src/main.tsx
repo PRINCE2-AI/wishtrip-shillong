@@ -207,7 +207,11 @@ function App() {
         </section>
 
         <section className="itinerary-section" id="itinerary">
-          {!plan ? <div className="empty-state"><Compass size={28} /><h2>Your Shillong story starts here.</h2><p>Set your preferences above and we’ll arrange a clear, considered itinerary in seconds.</p></div> : <>
+          {loading && !plan ? (
+            <div className="skeleton-list" aria-label="Building your itinerary">
+              {[0, 1, 2].map((key) => <div className="skeleton-card" key={key}><div className="skeleton-line short" /><div className="skeleton-line" /><div className="skeleton-line" /></div>)}
+            </div>
+          ) : !plan ? <div className="empty-state"><Compass size={28} /><h2>Your Shillong story starts here.</h2><p>Set your preferences above and we’ll arrange a clear, considered itinerary in seconds.</p></div> : <>
             <div className="itinerary-header">
               <div><p className="eyebrow">YOUR PERSONAL ITINERARY</p><h2>{nights} nights in {plan.destination} <span>·</span> {travelers} {travelers === 1 ? 'traveler' : 'travelers'}</h2></div>
               <div className="header-actions">
@@ -215,10 +219,15 @@ function App() {
                   <button className="share-button" onClick={copyShareLink}><Link2 size={13} /> {linkCopied ? 'Link copied!' : 'Copy link'}</button>
                   <button className="share-button" onClick={shareOnWhatsApp}><MessageCircle size={13} /> WhatsApp</button>
                 </div>
-                <div className="total-card"><span>EST. TRIP COST</span><strong>{money(plan.estimated_total, plan.currency)}</strong><small>of {money(budget, plan.currency)} budget</small></div>
+                <div className="total-card"><span>EST. TRIP COST</span><strong>{money(plan.estimated_total, plan.currency)}</strong><small>of {money(budget, plan.currency)} budget · {plan.days.reduce((sum, day) => sum + day.walking_km, 0).toFixed(1)} km walking total</small></div>
               </div>
             </div>
             {plan.seasonal_note && <p className="seasonal-note"><Sparkles size={13} /> {plan.seasonal_note}</p>}
+            {plan.unfilled_days.length > 0 && (
+              <p className="unfilled-note">
+                <Compass size={13} /> Day{plan.unfilled_days.length > 1 ? 's' : ''} {plan.unfilled_days.join(', ')} couldn’t be filled within your current filters — try relaxing your budget, dietary restrictions, or accessibility requirement.
+              </p>
+            )}
             <div className="itinerary-layout">
               <div className="day-list">
                 {plan.days.map((day, index) => {

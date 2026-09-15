@@ -61,6 +61,18 @@ def test_cost_breakdown_matches_estimated_total():
     assert round(sum(row.amount for row in plan.cost_breakdown), 2) == plan.estimated_total
 
 
+def test_traveller_type_changes_which_activities_are_chosen():
+    shared = dict(
+        start_date=date(2026, 11, 10), end_date=date(2026, 11, 11), budget=8000, pace="balanced",
+        interests=["outdoors", "adventure"],
+    )
+    family_ids = {item.activity.id for day in build_plan(request(traveller_type="family", **shared)).days for item in day.activities}
+    friends_ids = {item.activity.id for day in build_plan(request(traveller_type="friends", **shared)).days for item in day.activities}
+    # The 6-hour adventure trek is penalised for a family trip and boosted for a friends trip.
+    assert "living-root-bridge" not in family_ids
+    assert "living-root-bridge" in friends_ids
+
+
 def test_alternatives_never_include_the_chosen_activity():
     plan = build_plan(request())
     for day in plan.days:
