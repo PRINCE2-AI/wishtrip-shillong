@@ -1,6 +1,6 @@
-import { StrictMode, useMemo, useState } from 'react'
+import { StrictMode, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowRight, CalendarDays, Check, Compass, MapPin, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, Compass, Link2, MapPin, MessageCircle, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
 import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -35,6 +35,42 @@ const DESTINATION = {
   name: 'Shillong', label: 'Shillong, India', currency: 'INR', lodgingArea: 'Police Bazar',
   center: [25.5788, 91.8933] as [number, number], tagline: 'Shillong, at your own pace.',
 }
+
+const PRACTICAL_NOTES = [
+  'No Inner Line Permit needed for Meghalaya (Indian citizens) — unlike some neighbouring Northeast states.',
+  'Uber/Ola coverage is limited in Shillong — shared taxis and pre-booked cabs from Police Bazar are the norm.',
+]
+
+type TripParams = {
+  originCity: string; startDate: string; endDate: string; travelers: number; travellerType: string
+  budget: number; pace: Pace; interests: string[]; dietary: string[]; accessibility: boolean
+}
+
+function paramsFromSearch(search: string): TripParams | null {
+  const query = new URLSearchParams(search)
+  const startDate = query.get('start')
+  const endDate = query.get('end')
+  if (!startDate || !endDate) return null
+  return {
+    originCity: query.get('from') ?? 'Guwahati', startDate, endDate,
+    travelers: Number(query.get('travelers') ?? 2), travellerType: query.get('type') ?? 'couple',
+    budget: Number(query.get('budget') ?? 12000), pace: (query.get('pace') as Pace) ?? 'balanced',
+    interests: (query.get('interests') ?? 'Outdoors,Culture').split(',').filter(Boolean),
+    dietary: (query.get('dietary') ?? '').split(',').filter(Boolean),
+    accessibility: query.get('accessibility') === '1',
+  }
+}
+
+function searchFromParams(p: TripParams): string {
+  const query = new URLSearchParams({
+    from: p.originCity, start: p.startDate, end: p.endDate, travelers: String(p.travelers),
+    type: p.travellerType, budget: String(p.budget), pace: p.pace, interests: p.interests.join(','),
+    dietary: p.dietary.join(','), accessibility: p.accessibility ? '1' : '0',
+  })
+  return `${window.location.origin}${window.location.pathname}?${query.toString()}`
+}
+
+const CHERRAPUNJI_NEIGHBORHOOD = 'Cherrapunji (Sohra)'
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric' }).format(new Date(`${value}T12:00:00`))
@@ -74,33 +110,62 @@ function App() {
   const [error, setError] = useState('')
   const [activeDay, setActiveDay] = useState(0)
   const [swaps, setSwaps] = useState<Record<string, Activity>>({})
+  const [linkCopied, setLinkCopied] = useState(false)
 
   const nights = useMemo(() => Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000)), [startDate, endDate])
   const toggleInterest = (interest: string) => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])
 
-  const generate = async () => {
+  const runPlan = async (p: TripParams) => {
     setLoading(true); setError(''); setSwaps({})
     try {
       const response = await fetch(`${API_URL}/api/plan`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          origin_city: originCity, destination: DESTINATION.name, start_date: startDate, end_date: endDate,
-          travelers, traveller_type: travellerType, budget, currency: DESTINATION.currency, lodging_area: DESTINATION.lodgingArea,
-          pace, interests, dietary_restrictions: dietary, accessibility, enhance_with_ai: true,
+          origin_city: p.originCity, destination: DESTINATION.name, start_date: p.startDate, end_date: p.endDate,
+          travelers: p.travelers, traveller_type: p.travellerType, budget: p.budget, currency: DESTINATION.currency,
+          lodging_area: DESTINATION.lodgingArea, pace: p.pace, interests: p.interests,
+          dietary_restrictions: p.dietary, accessibility: p.accessibility, enhance_with_ai: true,
         }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail ?? 'Could not generate a plan')
       setPlan(data)
       setActiveDay(0)
+      window.history.replaceState(null, '', searchFromParams(p))
       setTimeout(() => document.getElementById('itinerary')?.scrollIntoView({ behavior: 'smooth' }), 50)
     } catch (err) {
       setError(err instanceof Error ? `${err.message}. Is the API running on port 8000?` : 'Something went wrong')
     } finally { setLoading(false) }
   }
 
+  const generate = () => runPlan({ originCity, startDate, endDate, travelers, travellerType, budget, pace, interests, dietary, accessibility })
+
+  useEffect(() => {
+    const fromUrl = paramsFromSearch(window.location.search)
+    if (!fromUrl) return
+    setOriginCity(fromUrl.originCity); setStartDate(fromUrl.startDate); setEndDate(fromUrl.endDate)
+    setTravelers(fromUrl.travelers); setTravellerType(fromUrl.travellerType); setBudget(fromUrl.budget)
+    setPace(fromUrl.pace); setInterests(fromUrl.interests); setDietary(fromUrl.dietary); setAccessibility(fromUrl.accessibility)
+    runPlan(fromUrl)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const swapActivity = (planId: string, alternative: Activity) => setSwaps((current) => ({ ...current, [planId]: alternative }))
   const displayedActivity = (item: Planned) => swaps[item.activity.id] ?? item.activity
+
+  const copyShareLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch { /* clipboard permission denied; nothing to fall back to */ }
+  }
+
+  const shareOnWhatsApp = () => {
+    if (!plan) return
+    const message = `My ${nights}-night Shillong trip on Wishtrip (est. ${money(plan.estimated_total, plan.currency)}): ${window.location.href}`
+    window.open(`https://wa.me/?text=${encodeURIComponent(message)}`, '_blank')
+  }
 
   return (
     <div className="app-shell">
@@ -124,6 +189,7 @@ function App() {
             <div><span className="step">01</span><div><h2>Set your scene</h2><p>The essentials, then the little details.</p></div></div>
             <span className="destination-pill"><MapPin size={14} /> {DESTINATION.label}</span>
           </div>
+          <ul className="practical-notes">{PRACTICAL_NOTES.map((note) => <li key={note}>{note}</li>)}</ul>
           <div className="form-grid">
             <label><span>FROM</span><div className="input-wrap"><MapPin size={16} /><input value={originCity} onChange={(event) => setOriginCity(event.target.value)} /></div></label>
             <label><span>CHECK IN</span><div className="input-wrap"><CalendarDays size={16} /><input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} /></div></label>
@@ -142,20 +208,34 @@ function App() {
 
         <section className="itinerary-section" id="itinerary">
           {!plan ? <div className="empty-state"><Compass size={28} /><h2>Your Shillong story starts here.</h2><p>Set your preferences above and we’ll arrange a clear, considered itinerary in seconds.</p></div> : <>
-            <div className="itinerary-header"><div><p className="eyebrow">YOUR PERSONAL ITINERARY</p><h2>{nights} nights in {plan.destination} <span>·</span> {travelers} {travelers === 1 ? 'traveler' : 'travelers'}</h2></div><div className="total-card"><span>EST. TRIP COST</span><strong>{money(plan.estimated_total, plan.currency)}</strong><small>of {money(budget, plan.currency)} budget</small></div></div>
+            <div className="itinerary-header">
+              <div><p className="eyebrow">YOUR PERSONAL ITINERARY</p><h2>{nights} nights in {plan.destination} <span>·</span> {travelers} {travelers === 1 ? 'traveler' : 'travelers'}</h2></div>
+              <div className="header-actions">
+                <div className="share-row">
+                  <button className="share-button" onClick={copyShareLink}><Link2 size={13} /> {linkCopied ? 'Link copied!' : 'Copy link'}</button>
+                  <button className="share-button" onClick={shareOnWhatsApp}><MessageCircle size={13} /> WhatsApp</button>
+                </div>
+                <div className="total-card"><span>EST. TRIP COST</span><strong>{money(plan.estimated_total, plan.currency)}</strong><small>of {money(budget, plan.currency)} budget</small></div>
+              </div>
+            </div>
             {plan.seasonal_note && <p className="seasonal-note"><Sparkles size={13} /> {plan.seasonal_note}</p>}
             <div className="itinerary-layout">
               <div className="day-list">
-                {plan.days.map((day, index) => <article className="day-card" key={day.day}>
+                {plan.days.map((day, index) => {
+                  const isCherrapunjiDayTrip = day.activities.length > 1 && day.activities.every((item) => item.activity.neighborhood === CHERRAPUNJI_NEIGHBORHOOD)
+                  return <article className="day-card" key={day.day}>
                   <div className="day-meta"><span className="day-number">DAY {String(day.day).padStart(2, '0')}</span><span>{formatDate(day.date)}</span><span className="theme">{day.theme}</span></div>
-                  <div className="day-title-row"><h3>{day.day === 1 ? 'A gentle introduction' : day.day === 2 ? 'Waterfalls & tiny discoveries' : 'Follow your curiosity'}</h3><span>{day.total_hours}h · {day.walking_km} km walking</span></div>
+                  <div className="day-title-row"><h3>{day.day === 1 ? 'A gentle introduction' : day.day === 2 ? 'Waterfalls & tiny discoveries' : 'Follow your curiosity'} {isCherrapunjiDayTrip && <span className="day-trip-badge">🚗 Cherrapunji day trip</span>}</h3><span>{day.total_hours}h · {day.walking_km} km walking</span></div>
                   {day.activities.map((item) => {
                     const activity = displayedActivity(item)
                     return (
                       <div className="activity-row" key={item.activity.id}>
                         <img src={activity.image} alt="" />
                         <div className="activity-content">
-                          <div className="activity-top"><span className="slot">{item.slot}</span><span className="activity-time">{item.start_time} — {item.end_time}</span></div>
+                          <div className="activity-top">
+                            <span className="slot">{item.slot}</span><span className="activity-time">{item.start_time} — {item.end_time}</span>
+                            {item.travel_minutes_from_previous > 0 && <span className="travel-time">· {item.travel_minutes_from_previous} min from previous stop</span>}
+                          </div>
                           <h4>{activity.name}</h4>
                           <p>{activity.description}</p>
                           <span className="reason"><Sparkles size={12} /> {item.reasons[0] ?? 'A strong fit for your trip'}</span>
@@ -177,7 +257,8 @@ function App() {
                     <MapPin size={13} /> {activeDay === index ? 'Hide route map' : 'View route on map'}
                   </button>
                   {activeDay === index && <DayMap day={day} />}
-                </article>)}
+                </article>
+                })}
               </div>
               <aside className="methodology">
                 <div className="aside-icon"><Sparkles size={16} /></div>
