@@ -1,0 +1,1 @@
+"""Wishtrip planning API."""

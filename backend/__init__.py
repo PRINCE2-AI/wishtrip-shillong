@@ -1,0 +1,1 @@
+"""Wishtrip backend package."""
