@@ -58,6 +58,11 @@ class Activity(BaseModel):
     dietary_options: list[str] = Field(default_factory=list)
     popularity: float = Field(ge=0, le=1)
     image: str
+    insider_tip: str
+    local_story: str
+    local_name: str | None = None
+    etiquette_note: str | None = None
+    myth_fact: str | None = None
 
 
 class PlannedActivity(BaseModel):

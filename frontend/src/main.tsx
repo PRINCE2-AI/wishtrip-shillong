@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowRight, CalendarDays, Check, Compass, Link2, MapPin, MessageCircle, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
+import { ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, Compass, Lightbulb, Link2, MapPin, MessageCircle, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
 import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -15,6 +15,7 @@ type Pace = 'relaxed' | 'balanced' | 'packed'
 type Activity = {
   id: string; name: string; category: string; description: string; neighborhood: string
   duration_hours: number; price_per_person: number; image: string; latitude: number; longitude: number
+  insider_tip: string; local_story: string; local_name?: string | null; etiquette_note?: string | null; myth_fact?: string | null
 }
 type Planned = {
   activity: Activity; slot: string; start_time: string; end_time: string
@@ -111,6 +112,7 @@ function App() {
   const [activeDay, setActiveDay] = useState(0)
   const [swaps, setSwaps] = useState<Record<string, Activity>>({})
   const [linkCopied, setLinkCopied] = useState(false)
+  const [expandedStories, setExpandedStories] = useState<Set<string>>(new Set())
 
   const nights = useMemo(() => Math.max(1, Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / 86400000)), [startDate, endDate])
   const toggleInterest = (interest: string) => setInterests((current) => current.includes(interest) ? current.filter((item) => item !== interest) : [...current, interest])
@@ -152,6 +154,11 @@ function App() {
 
   const swapActivity = (planId: string, alternative: Activity) => setSwaps((current) => ({ ...current, [planId]: alternative }))
   const displayedActivity = (item: Planned) => swaps[item.activity.id] ?? item.activity
+  const toggleStory = (activityId: string) => setExpandedStories((current) => {
+    const next = new Set(current)
+    if (next.has(activityId)) next.delete(activityId); else next.add(activityId)
+    return next
+  })
 
   const copyShareLink = async () => {
     try {
@@ -246,8 +253,20 @@ function App() {
                             {item.travel_minutes_from_previous > 0 && <span className="travel-time">· {item.travel_minutes_from_previous} min from previous stop</span>}
                           </div>
                           <h4>{activity.name}</h4>
+                          {activity.local_name && <p className="local-name">Locally known as: {activity.local_name}</p>}
                           <p>{activity.description}</p>
                           <span className="reason"><Sparkles size={12} /> {item.reasons[0] ?? 'A strong fit for your trip'}</span>
+                          <button className="story-toggle" onClick={() => toggleStory(activity.id)}>
+                            <ChevronDown size={12} className={expandedStories.has(activity.id) ? 'rotated' : ''} /> {expandedStories.has(activity.id) ? 'Hide insider tip & story' : 'Insider tip & local story'}
+                          </button>
+                          {expandedStories.has(activity.id) && (
+                            <div className="story-panel">
+                              <p><Lightbulb size={13} /> <strong>Insider tip:</strong> {activity.insider_tip}</p>
+                              <p><BookOpen size={13} /> <strong>Local story:</strong> {activity.local_story}</p>
+                              {activity.etiquette_note && <p className="etiquette"><strong>🙏 Local etiquette:</strong> {activity.etiquette_note}</p>}
+                              {activity.myth_fact && <p className="myth-fact"><strong>ℹ️ Myth vs fact:</strong> {activity.myth_fact}</p>}
+                            </div>
+                          )}
                           {item.alternatives.length > 0 && (
                             <div className="swap-row">
                               {[item.activity, ...item.alternatives].filter((option) => option.id !== activity.id).map((option) => (
