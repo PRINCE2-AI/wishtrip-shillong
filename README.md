@@ -2,6 +2,10 @@
 
 Wishtrip is a focused trip-planning prototype for one deeply modeled destination — **Shillong, Meghalaya (Northeast India)** — instead of shallow, broad coverage. It pairs a responsive React/Vite/TypeScript interface with a FastAPI/Pydantic API and a deterministic, explainable planning engine. An optional Claude layer only polishes the explanation copy; it never invents or changes activities, prices, or timings.
 
+**Live app:** https://wishtrip-shillong.vercel.app · **API:** https://wishtrip-shillong.onrender.com
+
+![Wishtrip itinerary screenshot](docs/screenshot.png)
+
 ## Architecture
 
 ```
