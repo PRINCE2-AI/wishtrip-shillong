@@ -1,6 +1,6 @@
 import { StrictMode, useEffect, useMemo, useState } from 'react'
 import { createRoot } from 'react-dom/client'
-import { ArrowRight, BookOpen, CalendarDays, Check, ChevronDown, Compass, Lightbulb, Link2, MapPin, MessageCircle, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
+import { ArrowRight, BedDouble, BookOpen, CalendarDays, Check, ChevronDown, CloudSun, Compass, Lightbulb, Link2, MapPin, MessageCircle, RefreshCw, Sparkles, WalletCards } from 'lucide-react'
 import { MapContainer, Marker, Polyline, Popup, TileLayer } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -23,9 +23,11 @@ type Planned = {
 }
 type Day = { day: number; date: string; theme: string; activities: Planned[]; estimated_cost: number; walking_km: number; total_hours: number }
 type CostRow = { category: string; amount: number }
+type Stay = { name: string; area: string; type: string; price_per_night: number; description: string }
 type Plan = {
   destination: string; destination_country: string; estimated_total: number; currency: string
   cost_breakdown: CostRow[]; days: Day[]; methodology: string[]; seasonal_note?: string | null
+  live_weather?: string | null; stay_suggestions: Stay[]
   ai_summary?: string | null; ai_enhanced?: boolean; unfilled_days: number[]
 }
 
@@ -229,7 +231,11 @@ function App() {
                 <div className="total-card"><span>EST. TRIP COST</span><strong>{money(plan.estimated_total, plan.currency)}</strong><small>of {money(budget, plan.currency)} budget · {plan.days.reduce((sum, day) => sum + day.walking_km, 0).toFixed(1)} km walking total</small></div>
               </div>
             </div>
-            {plan.seasonal_note && <p className="seasonal-note"><Sparkles size={13} /> {plan.seasonal_note}</p>}
+            {plan.live_weather ? (
+              <p className="seasonal-note live"><CloudSun size={13} /> {plan.live_weather}</p>
+            ) : plan.seasonal_note ? (
+              <p className="seasonal-note"><Sparkles size={13} /> {plan.seasonal_note}</p>
+            ) : null}
             {plan.unfilled_days.length > 0 && (
               <p className="unfilled-note">
                 <Compass size={13} /> Day{plan.unfilled_days.length > 1 ? 's' : ''} {plan.unfilled_days.join(', ')} couldn’t be filled within your current filters — try relaxing your budget, dietary restrictions, or accessibility requirement.
@@ -311,6 +317,22 @@ function App() {
                 )}
               </aside>
             </div>
+            {plan.stay_suggestions.length > 0 && (
+              <section className="stays-section">
+                <h3><BedDouble size={16} /> Where to stay</h3>
+                <p className="stays-caveat">Illustrative options to show typical areas and price ranges — not real bookable listings.</p>
+                <div className="stays-grid">
+                  {plan.stay_suggestions.map((stay) => (
+                    <div className="stay-card" key={stay.name}>
+                      <div className="stay-top"><span className="stay-type">{stay.type}</span><span>{money(stay.price_per_night, plan.currency)}<small> / night</small></span></div>
+                      <h4>{stay.name}</h4>
+                      <span className="stay-area"><MapPin size={11} /> {stay.area}</span>
+                      <p>{stay.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
           </>}
         </section>
       </main>

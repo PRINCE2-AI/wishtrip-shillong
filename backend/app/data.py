@@ -173,6 +173,22 @@ SHILLONG_ACTIVITIES = [
     ),
 ]
 
+SHILLONG_STAYS = [
+    {
+        "name": "Lakeside Pine Cottages", "area": "Umiam", "type": "Resort", "price_per_night": 6500,
+        "description": "Lake-view cottages about 30 minutes from central Shillong — a scenic, quieter base if you don't mind the commute into town for dinners.",
+    },
+    {
+        "name": "Police Bazar Central Inn", "area": "Police Bazar", "type": "Hotel", "price_per_night": 2200,
+        "description": "Walking distance to markets, cafes, and most Day 1 stops — the most convenient pick if you want to be in the middle of everything.",
+    },
+    {
+        "name": "Laitumkhrah Homestay", "area": "Laitumkhrah", "type": "Homestay", "price_per_night": 1800,
+        "description": "A family-run homestay near the Café Shillong neighbourhood — good if you want a quieter, more local stay experience.",
+    },
+]
+"""Illustrative, synthetic stay options — not real bookable properties or verified prices."""
+
 DESTINATIONS: dict[str, dict] = {
     "shillong": {
         "display_name": "Shillong",
@@ -185,6 +201,7 @@ DESTINATIONS: dict[str, dict] = {
         },
         "default_lodging_area": "Police Bazar",
         "activities": SHILLONG_ACTIVITIES,
+        "stays": SHILLONG_STAYS,
         "seasonal_notes": {
             3: "Spring — clear skies and blooming rhododendrons make viewpoints especially scenic.",
             6: "Monsoon begins — Cherrapunji waterfalls are at their most dramatic, but trails get slippery.",

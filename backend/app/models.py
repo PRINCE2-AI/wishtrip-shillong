@@ -93,6 +93,14 @@ class CostBreakdown(BaseModel):
     amount: float
 
 
+class StaySuggestion(BaseModel):
+    name: str
+    area: str
+    type: str
+    price_per_night: float
+    description: str
+
+
 class PlanResponse(BaseModel):
     origin_city: str
     destination: str
@@ -109,6 +117,8 @@ class PlanResponse(BaseModel):
     unfilled_days: list[int]
     methodology: list[str]
     seasonal_note: str | None = None
+    live_weather: str | None = None
+    stay_suggestions: list[StaySuggestion] = Field(default_factory=list)
     ai_summary: str | None = None
     ai_enhanced: bool = False
     generated_at: str

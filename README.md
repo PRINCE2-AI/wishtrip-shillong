@@ -36,9 +36,10 @@ An LLM asked to "plan a trip" will happily invent opening hours, prices, and geo
 4. **Slot filling**: each day fills morning → afternoon → evening from the highest-scoring open candidate for that slot, subject to a daily hour cap (7.5h relaxed / 9h balanced & packed) and a soft budget guardrail (once the minimum activities-per-pace target is met, additional stops that would push spend past 108% of budget are skipped).
 5. **Alternatives**: the next 1–2 best-scoring candidates per slot are returned alongside the chosen activity, powering the "Swap for…" button in the UI — a low-risk way to show planning intelligence beyond a single fixed answer, without a second API round-trip.
 6. **Cost breakdown**: spend is summed by activity category (Food, Outdoors, Workshop, …) so a traveller can see where their budget goes, not just a single total.
-7. **Seasonal notes**: a short, month-specific note (e.g. monsoon trail conditions in July, clear post-monsoon trekking weather in November) is attached based on the trip's start month.
+7. **Weather**: if the trip start date falls within the next 15 days, a live forecast is fetched from [Open-Meteo](https://open-meteo.com/) (free, no API key) and shown instead of the static note — outside that window, or if the request fails for any reason, it falls back to the same month-based seasonal note with no error surfaced to the user (see `backend/app/weather.py`). The UI labels which one it's showing, so a live forecast is never confused with a general estimate.
 8. **Travel time**: estimated as straight-line distance between coordinates × 12 minutes/km — a deliberate simplification, surfaced in the UI as an estimate rather than presented as routed, road-accurate time. This is a bigger approximation in Shillong's hill terrain than on flat ground, and is called out explicitly rather than presented as fact.
 9. **Unfilled days and low-signal edge cases are surfaced, not hidden**: if a day can't be filled, the UI shows which day and a plausible reason (budget/dietary/accessibility) instead of silently rendering a shorter trip.
+10. **Stay suggestions**: three illustrative accommodation options (by area and price band, not live listings) are returned alongside the itinerary, since the assignment brief calls out "stays" as part of a complete trip plan — clearly labeled as synthetic, not a booking integration.
 
 ## Data model and sources
 
@@ -53,8 +54,9 @@ Place names, neighborhoods, and approximate coordinates are based on publicly kn
 - **One destination, deeply modeled** with 14 hand-curated activities, rather than broad-but-shallow national coverage. The data layer is destination-keyed, so adding a second city is a data-only change, not an architecture change.
 - **Travel time is a straight-line estimate** (× 12 min/km), not a routed, road- or terrain-aware calculation — it understates travel time in Shillong's hill terrain, where roads wind around ridges and valleys.
 - **Prices are synthetic estimates**, not live rates; the app never claims a booking is available.
-- **No booking or persistence layer** — this is a planning prototype; itineraries are not saved server-side or shareable via a link yet.
-- **Weather is not live** — seasonal notes are static, month-based generalizations, not a live forecast.
+- **No server-side booking or storage** — trips aren't saved in a database; the "shareable link" feature encodes preferences in the URL itself (client-side only), not a persisted record.
+- **Live weather only covers the next 15 days** (Open-Meteo's forecast window); trips planned further ahead get the static seasonal note instead, clearly labeled as such.
+- **Stay suggestions are illustrative, not real listings** — three synthetic options by area/price band, not a booking integration or verified current pricing.
 - **Claude enhancement only rewrites the explanation text** (max 2 sentences); it cannot alter activities, order, timings, or costs, and the app works fully without an API key.
 - **Trips are capped at 14 days** to keep the deterministic search space and UI reasonable.
 - If a day can't be filled (e.g. very restrictive filters), it's returned in `unfilled_days` rather than silently faked.
@@ -153,7 +155,7 @@ These requests use the same engine and data but produce meaningfully different d
 
 - Route travel time with a real routing engine (e.g. self-hosted OSRM) instead of straight-line distance — this matters more here than most places, given Shillong's hill terrain.
 - Expand the activity count and source prices from a maintained public dataset rather than synthetic estimates.
-- Persist generated itineraries (e.g. SQLite) behind a shareable link.
-- Live weather/seasonal data instead of static month-based notes.
+- Persist generated itineraries server-side (e.g. SQLite) so a share link survives beyond the URL itself and works even if query params get stripped.
+- Extend live weather beyond the 15-day window using historical/climatological averages instead of falling straight back to a fixed month-based note.
 - A second or third Northeast India destination (e.g. Gangtok, Tawang) reusing the same destination-keyed data layer.
 - Auto-generate frontend TypeScript types from the FastAPI OpenAPI schema to remove manual type duplication.

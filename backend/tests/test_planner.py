@@ -56,6 +56,12 @@ def test_shillong_plan_uses_its_own_curated_data():
     assert plan.seasonal_note is not None
 
 
+def test_stay_suggestions_are_included():
+    plan = build_plan(request())
+    assert len(plan.stay_suggestions) == 3
+    assert all(stay.price_per_night > 0 for stay in plan.stay_suggestions)
+
+
 def test_cost_breakdown_matches_estimated_total():
     plan = build_plan(request())
     assert round(sum(row.amount for row in plan.cost_breakdown), 2) == plan.estimated_total

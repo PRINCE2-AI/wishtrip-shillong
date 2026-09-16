@@ -4,7 +4,8 @@ from datetime import date, datetime, timedelta, timezone
 from math import cos, radians, sqrt
 
 from .data import get_destination
-from .models import Activity, CostBreakdown, DayPlan, PlanRequest, PlanResponse, PlannedActivity
+from .models import Activity, CostBreakdown, DayPlan, PlanRequest, PlanResponse, PlannedActivity, StaySuggestion
+from .weather import fetch_forecast_note
 
 PACE_TARGETS = {"relaxed": (1, 2), "balanced": (2, 3), "packed": (3, 4)}
 SLOTS = {"morning": ("09:00", "12:30"), "afternoon": ("13:30", "17:00"), "evening": ("18:00", "21:00")}
@@ -163,6 +164,9 @@ def build_plan(request: PlanRequest) -> PlanResponse:
         for category, amount in sorted(category_cost.items(), key=lambda row: -row[1])
     ]
     seasonal_note = destination["seasonal_notes"].get(request.start_date.month)
+    anchor_lat, anchor_lon = anchors[destination["default_lodging_area"]]
+    live_weather = fetch_forecast_note(anchor_lat, anchor_lon, request.start_date, request.end_date)
+    stay_suggestions = [StaySuggestion(**stay) for stay in destination.get("stays", [])]
     return PlanResponse(
         origin_city=request.origin_city, destination=destination["display_name"],
         destination_country=destination["country"], start_date=request.start_date,
@@ -179,5 +183,7 @@ def build_plan(request: PlanRequest) -> PlanResponse:
             f"Plan shaped for a {request.traveller_type} trip departing from {request.origin_city}.",
         ],
         seasonal_note=seasonal_note,
+        live_weather=live_weather,
+        stay_suggestions=stay_suggestions,
         generated_at=datetime.now(timezone.utc).isoformat(),
     )
